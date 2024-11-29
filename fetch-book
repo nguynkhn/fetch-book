@@ -1,0 +1,52 @@
+#!/usr/bin/env node
+
+const Database = require('better-sqlite3');
+const glob = require('glob');
+
+let database;
+
+const setupDatabase = (databasePath) => {
+  database = new Database(databasePath);
+
+  database.exec(`CREATE TABLE IF NOT EXISTS bookProviders(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    apiUrl TEXT NOT NULL,
+    pageUrl TEXT NOT NULL
+  )`);
+  database.exec(`CREATE TABLE IF NOT EXISTS books(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    apiId INTEGER NOT NULL,
+    providerId INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    pages TEXT NOT NULL,
+    FOREIGN KEY (providerId) REFERENCES bookProviders(id)
+  )`);
+};
+
+const updateDatabase = async (providerPath) => {
+  const addBookProvider = (provider) => database
+    .prepare(`INSERT OR REPLACE INTO bookProviders(id, name, apiUrl, pageUrl)
+      VALUES ((SELECT id FROM bookProviders WHERE apiUrl = :apiUrl),
+        :name, :apiUrl, :pageUrl)`)
+    .run(provider);
+
+  const providerFiles = await glob.glob(`${providerPath}/*.js`);
+  for (const providerFile of providerFiles) {
+    const provider = require(providerFile);
+    const providerId = addBookProvider(provider).lastInsertRowid;
+    
+    const addBook = (apiId, title, pages) => database
+      .prepare(`INSERT OR REPLACE INTO
+        books(id, apiId, providerId, title, pages)
+        VALUES ((SELECT id FROM books
+          WHERE apiId = :apiId AND providerId = :providerId),
+          :apiId, :providerId, :title, :pages)`)
+      .run({ apiId, providerId, title: title.trim(), pages: pages.join(';') });
+
+    await provider.fetch(addBook);
+  }
+};
+
+setupDatabase('books.db');
+updateDatabase(`${__dirname}/providers`);
