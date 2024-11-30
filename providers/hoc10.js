@@ -20,7 +20,7 @@ module.exports = {
 
       const pages = list_page.map(({ background }) => background
         .slice("E_Learning/page_public/".length));
-      addBook(id, title, pages);
+      addBook(id, `${title} - Cánh diều`, pages);
     }
   },
 };

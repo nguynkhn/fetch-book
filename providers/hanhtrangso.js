@@ -20,31 +20,31 @@ module.exports = {
         .post(`${this.apiUrl}/login`, account))
         .data.data;
       headers.Authorization = `Bearer ${accessToken}`;
-      
+
       const buffer = Buffer.from(accessToken.split('.')[1], "base64");
       expireTime = JSON.parse(buffer.toString()).exp;
     };
 
     await checkLogin();
-    const bookList = (await axios
+    const bookTypes = (await axios
       .post(`${this.apiUrl}/book/book-list`, {}, { headers }))
-      .data.data
-      .map(({ bookGroups }) => bookGroups.map(({ books }) => books).flat())
-      .flat();
+      .data.data;
+    for (const { name: bookSetName, bookGroups } of bookTypes) {
+      const bookList = bookGroups.map(({ books }) => books).flat();
+      for (const { bookId, name } of bookList) {
+        await checkLogin();
 
-    for (const { bookId, name } of bookList) {
-      await checkLogin();
+        const { totalPage, fileName } = (await axios
+          .get(`${this.apiUrl}/book/${bookId}`, { headers }))
+          .data.data;
+        if (!fileName) {
+          continue;
+        }
 
-      const { totalPage, fileName } = (await axios
-        .get(`${this.apiUrl}/book/${bookId}`, { headers }))
-        .data.data;
-      if (!fileName) {
-        continue;
+        const pages = [...Array(totalPage).keys()]
+          .map(index => `${fileName}-${index + 1}.jpg`);
+        addBook(bookId, `${name} - ${bookSetName}`, pages);
       }
-
-      const pages = [...Array(totalPage).keys()]
-        .map(index => `${fileName}-${index + 1}.jpg`);
-      addBook(bookId, name, pages);
     }
   },
 };
