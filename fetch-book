@@ -2,6 +2,10 @@
 
 const Database = require('better-sqlite3');
 const glob = require('glob');
+const axios = require('axios');
+
+const fs = require('fs');
+const path = require('path');
 
 let database;
 
@@ -35,7 +39,7 @@ const updateDatabase = async (providerPath) => {
   for (const providerFile of providerFiles) {
     const provider = require(providerFile);
     const providerId = addBookProvider(provider).lastInsertRowid;
-    
+
     const addBook = (apiId, title, pages) => database
       .prepare(`INSERT OR REPLACE INTO
         books(id, apiId, providerId, title, pages)
@@ -48,5 +52,45 @@ const updateDatabase = async (providerPath) => {
   }
 };
 
+const downloadBook = async (bookId, outputDir) => {
+  const book = database.prepare("SELECT * FROM books WHERE id = ?").get(bookId);
+  if (!book) {
+    return;
+  }
+
+  const provider = database.prepare("SELECT * FROM bookProviders WHERE id = ?")
+    .get(book.providerId);
+
+  const output = book.title
+    .normalize('NFD')
+    .replace(/Đ/g, 'D').replace(/đ/g, 'd') // distinct letter
+    .replace(/[^\d\w\s-_]/g, '')
+    .toLowerCase().replace(/(\s|-|_)+/g, '-');
+  outputDir = path.join(outputDir, output);
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  const pages = book.pages.split(';');
+  const padLength = pages.length.toString().length;
+
+  for (const [index, page] of pages.entries()) {
+    const pageImage = await axios.get(
+      `${provider.pageUrl}/${page}`,
+      { responseType: 'stream' },
+    );
+
+    const pageNum = `${index + 1}`.padStart(padLength, '0');
+    const pageFile = `${output}-${pageNum}${path.extname(page)}`;
+    pageImage.data.pipe(fs.createWriteStream(path.join(outputDir, pageFile)));
+  }
+};
+
 setupDatabase('books.db');
-updateDatabase(`${__dirname}/providers`);
+
+const bookId = process.argv[2];
+if (bookId) {
+  downloadBook(process.argv[2], "output/");
+} else {
+  updateDatabase(`${__dirname}/providers`);
+}
