@@ -3,7 +3,7 @@ const axios = require('axios');
 module.exports = {
   name: "Hành Trang Số",
   apiUrl: "https://apihanhtrangso.nxbgd.vn:8080/api",
-  pageUrl: "https://cdnlearning.nxbgd.vn/uploads/books",
+  pageUrl: "https://cdnelearning.nxbgd.vn/uploads/books",
   fetch: async function (addBook) {
     const account = {
       email: process.env.HANHTRANGSO_EMAIL,
