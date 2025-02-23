@@ -3,6 +3,7 @@ const axios = require('axios');
 module.exports = {
   name: "Hành Trang Số",
   apiUrl: "https://apihanhtrangso.nxbgd.vn:8080/api",
+  referer: "https://hanhtrangso.nxbgd.vn",
   pageUrl: "https://cdnelearning.nxbgd.vn/uploads/books",
   fetch: async function (addBook) {
     const account = {

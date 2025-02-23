@@ -3,6 +3,7 @@ const axios = require('axios');
 module.exports = {
   name: "Hoc10",
   apiUrl: "https://api.hoc10.vn/api",
+  referer: "https://hoc10.vn",
   pageUrl: "https://hoc10.monkeyuni.net/E_Learning/page_public",
   fetch: async function (addBook) {
     const { list_book } = (await axios
